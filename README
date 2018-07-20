@@ -1,6 +1,7 @@
 this is a simplest threadpool which is implemented by c.it provides 3 interfaces as follows:
-    1.threadpool_t * threadpool_init(int num);
-        num: the number of threads in the threadpool
+    1.threadpool_t * threadpool_init(int threadNum,int queueMaxLen);
+        threadNum: the number of threads in the threadpool
+        queueMaxLen: maximum number of tasks in the queue.if the maximum number limit is reached,the thread will be blocked.
         return: if succeeded,return a pointer to threadpool;if failed,return NULL
     2.int threadpool_add_task(threadpool_t *pThreadPool,void* (*func)(void *),void *args);
         pThreadPool: a pointer to threadpool which you want to add tasks to.
