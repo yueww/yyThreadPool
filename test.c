@@ -10,7 +10,7 @@
 void *func(void *arg);
 
 int main(){
-    threadpool_t *tp=threadpool_init(4);
+    threadpool_t *tp=threadpool_init(4,4);
     int a[8];
     for(int i=0;i<8;i++){
         a[i]=i+1;
@@ -22,21 +22,18 @@ int main(){
             return 0;
         } 
     }
-    sleep(1);
-    threadpool_destroy(tp);
-    tp=threadpool_init(8);
-    for(int i=0;i<8;i++){
-        if(threadpool_add_task(tp,func,a+i)==-1){
-            printf("error!\n");
-            threadpool_destroy(tp);
-            return 0;
-        } 
-    }
-    sleep(1);
+    if(threadpool_add_task(tp,func,a)==-1){
+        printf("error!\n");
+        threadpool_destroy(tp);
+        return 0;
+    } 
+    printf("test!\n");
+    sleep(3);
     threadpool_destroy(tp);
 }
 
 void *func(void *arg){
     int *pNum=(int *)arg;
     printf("thread %lu is printing %d\n",(unsigned long)pthread_self(),*pNum);
+    sleep(2);
 }

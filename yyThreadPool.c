@@ -18,23 +18,25 @@ volatile int keepAlive;
 
 
 
-threadpool_t *threadpool_init(int num){
+threadpool_t *threadpool_init(int threadNum,int queueMaxLen){
     threadpool_t *pThreadPool=(threadpool_t *)malloc(sizeof(threadpool_t));
     if(pThreadPool==NULL) return NULL;
     (pThreadPool->tasks).front=NULL;
     (pThreadPool->tasks).rear=NULL;
     pthread_mutex_init(&((pThreadPool->tasks).qmutex),NULL);
+    pthread_cond_init(&((pThreadPool->tasks).not_full),NULL);
+    (pThreadPool->tasks).max_len=queueMaxLen;
     (pThreadPool->tasks).qlen=0;
     (pThreadPool->tasks).has_tasks=(bsem *)malloc(sizeof(bsem));
     if((pThreadPool->tasks).has_tasks==NULL) return NULL;
     if(bsem_init((pThreadPool->tasks).has_tasks,0)!=0) return NULL;
-    pThreadPool->work_threads=(pthread_t *)malloc(num*sizeof(pthread_t));
-    pThreadPool->num_alive_threads=num;
+    pThreadPool->work_threads=(pthread_t *)malloc(threadNum*sizeof(pthread_t));
+    pThreadPool->num_alive_threads=threadNum;
     pThreadPool->num_running_threads=0;
     pthread_mutex_init(&(pThreadPool->tmutex),NULL);
     pthread_cond_init(&(pThreadPool->has_idle),NULL);
     keepAlive=1;
-    for(int i=0;i<num;i++){
+    for(int i=0;i<threadNum;i++){
         pthread_create(&((pThreadPool->work_threads)[i]),0,thread_work,(void *)pThreadPool);
     }
     return pThreadPool;
@@ -64,6 +66,9 @@ void *thread_work(void *args){
                 bsem_post((pThreadPool->tasks).has_tasks);
             }
             (pThreadPool->tasks).qlen--;
+            if((pThreadPool->tasks).qlen==((pThreadPool->tasks).max_len-1)){
+                pthread_cond_signal(&((pThreadPool->tasks).not_full));
+            }
             pthread_mutex_unlock(&((pThreadPool->tasks).qmutex));
             void *(*func)(void *)=t->func;
             func(t->args);
@@ -93,6 +98,9 @@ int threadpool_add_task(threadpool_t *pThreadPool,void* (*func)(void *),void *ar
     t->args=args;
     t->next=NULL;
     pthread_mutex_lock(&((pThreadPool->tasks).qmutex));
+    while((pThreadPool->tasks).qlen==(pThreadPool->tasks).max_len){
+        pthread_cond_wait(&((pThreadPool->tasks).not_full),&((pThreadPool->tasks).qmutex));
+    }
     if((pThreadPool->tasks).qlen==0){
         (pThreadPool->tasks).front=(pThreadPool->tasks).rear=t;
     }else{

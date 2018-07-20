@@ -35,6 +35,8 @@ typedef struct taskqueue{
     task *front;
     task *rear;
     pthread_mutex_t qmutex;
+    pthread_cond_t not_full;
+    int max_len;
     int qlen;
     bsem *has_tasks;
 }taskqueue;
@@ -48,7 +50,7 @@ typedef struct threadpool_t{
     pthread_cond_t has_idle;
 }threadpool_t;
 
-threadpool_t *threadpool_init(int num);
+threadpool_t *threadpool_init(int threadNum,int queueMaxLen);
 int threadpool_add_task(threadpool_t *pThreadPool,void* (*func)(void *),void *args);
 void threadpool_destroy(threadpool_t *pThreadPool);
 
